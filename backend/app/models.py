@@ -13,14 +13,21 @@ class GUID(TypeDecorator):
 
     def load_dialect_impl(self, dialect):
         if dialect.name == 'postgresql':
-            return dialect.type_descriptor(PG_UUID(as_uuid=False))
+            return dialect.type_descriptor(PG_UUID())
         else:
             return dialect.type_descriptor(CHAR(36))
 
     def process_bind_param(self, value, dialect):
         if value is None:
             return None
-        return str(value)
+        if isinstance(value, uuid.UUID):
+            return value if dialect.name == 'postgresql' else str(value)
+        try:
+            u = uuid.UUID(str(value))
+            return u if dialect.name == 'postgresql' else str(u)
+        except Exception:
+            u = uuid.uuid5(uuid.NAMESPACE_DNS, str(value))
+            return u if dialect.name == 'postgresql' else str(u)
 
     def process_result_value(self, value, dialect):
         if value is None:

@@ -11,34 +11,24 @@ db_url = settings.DATABASE_URL or "sqlite:///./ceditrack.db"
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
-connect_args = {}
-
 if db_url.startswith("sqlite"):
-    connect_args = {"check_same_thread": False}
-    engine = create_engine(db_url, connect_args=connect_args, pool_pre_ping=True)
+    engine = create_engine(db_url, connect_args={"check_same_thread": False}, pool_pre_ping=True)
 else:
-    # Try creating engine with psycopg2 first, fallback to pg8000 or clean params
+    # Use pg8000 as reliable driver across serverless environments
     try:
-        if "pg8000" in db_url:
-            # Strip sslmode query param for pg8000
-            clean_url = re.sub(r'[?&]sslmode=[^&]+', '', db_url)
-            ssl_ctx = ssl.create_default_context()
-            ssl_ctx.check_hostname = False
-            ssl_ctx.verify_mode = ssl.CERT_NONE
-            engine = create_engine(clean_url, connect_args={"ssl_context": ssl_ctx}, pool_pre_ping=True)
-        else:
-            engine = create_engine(db_url, pool_pre_ping=True)
+        # If pg8000 is installed, use postgresql+pg8000://
+        pg8000_url = db_url
+        if not pg8000_url.startswith("postgresql+"):
+            pg8000_url = pg8000_url.replace("postgresql://", "postgresql+pg8000://", 1)
+        
+        # Clean query parameters for pg8000
+        pg8000_url = re.sub(r'[?&]sslmode=[^&]+', '', pg8000_url)
+        ssl_ctx = ssl.create_default_context()
+        ssl_ctx.check_hostname = False
+        ssl_ctx.verify_mode = ssl.CERT_NONE
+        engine = create_engine(pg8000_url, connect_args={"ssl_context": ssl_ctx}, pool_pre_ping=True)
     except Exception:
-        # Fallback to pg8000 pure python driver
-        if "postgresql://" in db_url and "pg8000" not in db_url:
-            pg8000_url = db_url.replace("postgresql://", "postgresql+pg8000://", 1)
-            pg8000_url = re.sub(r'[?&]sslmode=[^&]+', '', pg8000_url)
-            ssl_ctx = ssl.create_default_context()
-            ssl_ctx.check_hostname = False
-            ssl_ctx.verify_mode = ssl.CERT_NONE
-            engine = create_engine(pg8000_url, connect_args={"ssl_context": ssl_ctx}, pool_pre_ping=True)
-        else:
-            engine = create_engine(db_url, pool_pre_ping=True)
+        engine = create_engine(db_url, pool_pre_ping=True)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()

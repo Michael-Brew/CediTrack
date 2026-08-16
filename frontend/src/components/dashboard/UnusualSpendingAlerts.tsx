@@ -22,8 +22,8 @@ export const UnusualSpendingAlerts: React.FC<UnusualSpendingAlertsProps> = ({
             <CheckCircle2 className="w-5 h-5" />
           </div>
           <div>
-            <h4 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">Spending is Normal (30-Day Window)</h4>
-            <p className="text-xs text-slate-500 dark:text-slate-400">No anomalous or irregular high expenses detected across your accounts.</p>
+            <h4 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">Spending Looks Normal (Past 30 Days)</h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400">No unusually high expenses detected across your accounts.</p>
           </div>
         </div>
         <span className="hidden sm:inline-flex px-3 py-1 text-xs font-semibold rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
@@ -44,7 +44,7 @@ export const UnusualSpendingAlerts: React.FC<UnusualSpendingAlertsProps> = ({
             <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
               Unusual Spending Detected ({alerts.length})
             </h3>
-            <p className="text-xs text-amber-700 dark:text-amber-300/80">30-day statistical variance flagged high expenses</p>
+            <p className="text-xs text-amber-700 dark:text-amber-300/80">Expenses that were noticeably higher than your usual 30-day average</p>
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   ResponsiveContainer,
   LineChart,
@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { AccountBalanceHistoryPoint } from '../../api/dashboard';
 import { formatGHS } from '../../lib/formatters';
+import { useTheme } from '../../context/ThemeContext';
 
 interface RunningBalanceChartProps {
   data: AccountBalanceHistoryPoint[];
@@ -21,14 +22,17 @@ const LINE_COLORS = [
   '#F59E0B', // Amber
   '#38BDF8', // Sky Blue
   '#EC4899', // Pink
-  '#A855F7', // Purple
+  '#8B5CF6', // Purple
   '#F97316', // Orange
 ];
 
 export const RunningBalanceChart: React.FC<RunningBalanceChartProps> = ({ data }) => {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+
   if (!data || data.length === 0) {
     return (
-      <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center justify-center h-80 text-slate-400 text-sm">
+      <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center h-80 text-slate-500 dark:text-slate-400 text-sm shadow-sm">
         No balance history available yet. Add transactions or import a statement to view running balances.
       </div>
     );
@@ -48,15 +52,15 @@ export const RunningBalanceChart: React.FC<RunningBalanceChartProps> = ({ data }
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-slate-900 border border-slate-700 p-3 rounded-xl shadow-xl text-xs space-y-1.5 min-w-[160px]">
-          <p className="font-semibold text-slate-300 border-b border-slate-800 pb-1">{label}</p>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-xl shadow-xl text-xs space-y-1.5 min-w-[160px]">
+          <p className="font-semibold text-slate-700 dark:text-slate-300 border-b border-slate-100 dark:border-slate-800 pb-1">{label}</p>
           {payload.map((item: any, idx: number) => (
             <div key={idx} className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                <span className="text-slate-400 truncate max-w-[100px]">{item.name}:</span>
+                <span className="text-slate-600 dark:text-slate-400 truncate max-w-[100px]">{item.name}:</span>
               </div>
-              <span className="font-bold text-white">{formatGHS(item.value)}</span>
+              <span className="font-bold text-slate-900 dark:text-white">{formatGHS(item.value)}</span>
             </div>
           ))}
         </div>
@@ -66,27 +70,27 @@ export const RunningBalanceChart: React.FC<RunningBalanceChartProps> = ({ data }
   };
 
   return (
-    <div className="p-5 sm:p-6 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-sm">
+    <div className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-base font-bold text-white tracking-tight">Running Balance by Account</h3>
-          <p className="text-xs text-slate-400">Cumulative balance trajectory across all active accounts</p>
+          <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">Running Balance by Account</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Cumulative balance trajectory across all active accounts</p>
         </div>
       </div>
 
-      <div className="h-72 w-full">
+      <div className="h-64 sm:h-72 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#1e293b' : '#f1f5f9'} vertical={false} />
             <XAxis
               dataKey="date"
-              stroke="#64748b"
+              stroke={isDark ? '#64748b' : '#94a3b8'}
               fontSize={11}
               tickLine={false}
-              axisLine={{ stroke: '#334155' }}
+              axisLine={{ stroke: isDark ? '#334155' : '#e2e8f0' }}
             />
             <YAxis
-              stroke="#64748b"
+              stroke={isDark ? '#64748b' : '#94a3b8'}
               fontSize={11}
               tickLine={false}
               axisLine={false}

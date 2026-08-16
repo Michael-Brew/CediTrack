@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, ArrowRightLeft, Wallet, Smartphone, Landmark, Banknote } from 'lucide-react';
+import { Plus, ArrowRightLeft, Wallet } from 'lucide-react';
 import { Account, CreateAccountPayload, TransferPayload, accountsApi } from '../api/accounts';
 import { AccountCard } from '../components/accounts/AccountCard';
 import { AccountModal } from '../components/accounts/AccountModal';
@@ -66,25 +66,25 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({ onRefreshParent }) =
   const totalBalance = accounts.reduce((sum, a) => sum + Number(a.current_balance || 0), 0);
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-5 sm:space-y-6 pb-20 lg:pb-12">
       {/* Top Banner */}
-      <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
         <div>
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Liquidity</span>
-          <h3 className="text-3xl font-extrabold text-white tracking-tight mt-0.5">{formatGHS(totalBalance)}</h3>
-          <p className="text-xs text-slate-400 mt-1">Across {accounts.length} Wallets & Accounts</p>
+          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Liquidity</span>
+          <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mt-0.5">{formatGHS(totalBalance)}</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Across {accounts.length} Wallets & Accounts</p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
           {accounts.length >= 2 && (
             <button
               onClick={() => {
                 setTransferFromAccount(null);
                 setTransferOpen(true);
               }}
-              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors flex items-center gap-2"
+              className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-200 text-xs font-semibold border border-slate-200 dark:border-slate-700 transition-colors flex items-center gap-2"
             >
-              <ArrowRightLeft className="w-4 h-4 text-emerald-400" />
+              <ArrowRightLeft className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Transfer Funds</span>
             </button>
           )}
@@ -94,7 +94,7 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({ onRefreshParent }) =
               setEditingAccount(null);
               setModalOpen(true);
             }}
-            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold shadow-md shadow-emerald-950/40 transition-all flex items-center gap-2"
+            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold shadow-md shadow-emerald-950/20 transition-all flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
             <span>Add Account</span>
@@ -104,17 +104,17 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({ onRefreshParent }) =
 
       {/* Account Cards Grid */}
       {loading && accounts.length === 0 ? (
-        <div className="p-12 text-center text-slate-400 text-sm flex flex-col items-center justify-center gap-2">
+        <div className="p-12 text-center text-slate-500 dark:text-slate-400 text-sm flex flex-col items-center justify-center gap-2">
           <div className="w-8 h-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
           <span>Loading accounts...</span>
         </div>
       ) : accounts.length === 0 ? (
-        <div className="p-12 rounded-2xl bg-slate-900/60 border border-slate-800 text-center flex flex-col items-center justify-center">
-          <div className="w-12 h-12 rounded-2xl bg-slate-800 text-slate-400 flex items-center justify-center mb-3">
+        <div className="p-10 sm:p-12 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-center flex flex-col items-center justify-center shadow-sm">
+          <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mb-3">
             <Wallet className="w-6 h-6" />
           </div>
-          <h4 className="text-base font-bold text-white mb-1">No Accounts Yet</h4>
-          <p className="text-xs text-slate-400 max-w-sm mb-4">
+          <h4 className="text-base font-bold text-slate-900 dark:text-white mb-1">No Accounts Yet</h4>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mb-4">
             Add your MTN MoMo wallet, Telecel Cash, GCB bank account, or shop cash till to begin tracking.
           </p>
           <button
@@ -122,13 +122,13 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({ onRefreshParent }) =
               setEditingAccount(null);
               setModalOpen(true);
             }}
-            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold"
+            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow"
           >
             Create Your First Account
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
           {accounts.map((acc) => (
             <AccountCard
               key={acc.id}

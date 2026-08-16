@@ -9,7 +9,12 @@
   }
 
   body {
-    @apply bg-slate-950 text-slate-100 font-sans antialiased;
+    @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 font-sans antialiased selection:bg-emerald-500 selection:text-white transition-colors duration-200;
+  }
+
+  /* Form control default visibility safeguards */
+  input, select, textarea {
+    @apply text-slate-900 dark:text-slate-100;
   }
 
   /* Custom subtle scrollbar */
@@ -18,28 +23,23 @@
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #090d16;
+    background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #334155;
-    border-radius: 9999px;
+    @apply bg-slate-300 dark:bg-slate-700 rounded-full;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #475569;
+    @apply bg-slate-400 dark:bg-slate-600;
   }
 }
 
 @layer utilities {
   .glass-panel {
-    background: rgba(15, 23, 42, 0.75);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    @apply bg-white/90 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80;
   }
 
   .glass-card {
-    background: rgba(30, 41, 59, 0.6);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    @apply bg-white dark:bg-slate-900/90 backdrop-blur-sm border border-slate-200/90 dark:border-slate-800/90 shadow-sm dark:shadow-none;
   }
 
   .glass-card-hover {
@@ -47,7 +47,11 @@
   }
   .glass-card-hover:hover {
     transform: translateY(-2px);
-    border-color: rgba(16, 185, 129, 0.3);
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    @apply border-emerald-500/40 dark:border-emerald-500/30 shadow-md dark:shadow-emerald-950/20;
+  }
+
+  /* Mobile bottom bar safe area padding */
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 }

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { Sidebar, NavTab } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
+import { MobileBottomNav } from './components/layout/MobileBottomNav';
 import { DashboardPage } from './pages/DashboardPage';
 import { AccountsPage } from './pages/AccountsPage';
 import { TransactionsPage } from './pages/TransactionsPage';
@@ -42,7 +44,7 @@ const MainAppContent: React.FC = () => {
     try {
       setSeeding(true);
       const res = await dashboardApi.seedDemoData();
-      showToast(`🇬🇭 ${res.message} (${res.flagged_anomalies_count} 30-day high-expense alerts detected)`);
+      showToast(`🇬🇭 ${res.message} (${res.flagged_anomalies_count} 30-day alerts detected)`);
       triggerRefresh();
     } catch (err: any) {
       alert(err.message || 'Failed to seed sample data');
@@ -65,7 +67,7 @@ const MainAppContent: React.FC = () => {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400 gap-3">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 gap-3 transition-colors">
         <div className="w-10 h-10 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
         <span className="text-sm font-medium">Initializing CediTrack...</span>
       </div>
@@ -77,10 +79,10 @@ const MainAppContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col lg:flex-row transition-colors">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 p-4 rounded-xl bg-slate-900 border border-emerald-500/40 text-emerald-400 shadow-2xl text-xs font-semibold flex items-center gap-2 animate-slide-up">
+        <div className="fixed top-5 right-5 sm:top-auto sm:bottom-5 sm:right-5 z-50 p-4 rounded-xl bg-white dark:bg-slate-900 border border-emerald-500/40 text-emerald-700 dark:text-emerald-400 shadow-2xl text-xs font-semibold flex items-center gap-2 animate-slide-up">
           <span>{toastMessage}</span>
         </div>
       )}
@@ -98,12 +100,12 @@ const MainAppContent: React.FC = () => {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden flex">
+        <div className="fixed inset-0 z-50 lg:hidden flex">
           <div
             onClick={() => setMobileMenuOpen(false)}
-            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm"
+            className="fixed inset-0 bg-slate-950/60 dark:bg-slate-950/80 backdrop-blur-sm animate-fade-in"
           />
-          <div className="relative w-64 bg-slate-900 h-full z-50">
+          <div className="relative w-64 bg-white dark:bg-slate-900 h-full z-50 shadow-2xl animate-slide-right">
             <Sidebar
               currentTab={currentTab}
               onSelectTab={(tab) => {
@@ -116,6 +118,7 @@ const MainAppContent: React.FC = () => {
               }}
               onSeedData={handleSeedDemoData}
               seeding={seeding}
+              onCloseMobile={() => setMobileMenuOpen(false)}
             />
           </div>
         </div>
@@ -131,7 +134,7 @@ const MainAppContent: React.FC = () => {
           seeding={seeding}
         />
 
-        <main className="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto" key={refreshKey}>
+        <main className="flex-1 p-3.5 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24 lg:pb-8" key={refreshKey}>
           {currentTab === 'dashboard' && (
             <DashboardPage
               onNavigateTab={(tab) => setCurrentTab(tab)}
@@ -163,6 +166,13 @@ const MainAppContent: React.FC = () => {
         </main>
       </div>
 
+      {/* Mobile Bottom Navigation with Central FAB */}
+      <MobileBottomNav
+        currentTab={currentTab}
+        onSelectTab={(tab) => setCurrentTab(tab)}
+        onOpenAddTransaction={() => setAddTxnOpen(true)}
+      />
+
       {/* Global Modals */}
       <TransactionModal
         isOpen={addTxnOpen}
@@ -183,9 +193,11 @@ const MainAppContent: React.FC = () => {
 
 export const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <MainAppContent />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <MainAppContent />
+      </AuthProvider>
+    </ThemeProvider>
   );
 };
 

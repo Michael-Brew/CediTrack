@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Download, Filter, RefreshCw, FileText } from 'lucide-react';
+import { Plus, Download } from 'lucide-react';
 import { Transaction, TransactionFilters, CreateTransactionPayload, transactionsApi } from '../api/transactions';
 import { Account, accountsApi } from '../api/accounts';
 import { TransactionTable } from '../components/transactions/TransactionTable';
 import { TransactionFilterBar } from '../components/transactions/TransactionFilterBar';
 import { TransactionModal } from '../components/transactions/TransactionModal';
-import { formatGHS } from '../lib/formatters';
 
 interface TransactionsPageProps {
   onRefreshParent?: () => void;
@@ -99,20 +98,20 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ onRefreshPar
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-4 sm:space-y-6 pb-20 lg:pb-12">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h3 className="text-xl font-bold text-white tracking-tight">Ledger & Transaction History</h3>
-          <p className="text-xs text-slate-400">
+          <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight">Ledger & Transaction History</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {transactions.length} record{transactions.length === 1 ? '' : 's'} found
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 sm:gap-2.5">
           <button
             onClick={exportToCSV}
-            className="px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+            className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
           >
             <Download className="w-4 h-4" />
             <span>Export CSV</span>
@@ -123,7 +122,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ onRefreshPar
               setEditingTxn(null);
               setModalOpen(true);
             }}
-            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold shadow-md shadow-emerald-950/40 transition-all flex items-center gap-1.5"
+            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold shadow-md shadow-emerald-950/20 transition-all flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4" />
             <span>Add Transaction</span>

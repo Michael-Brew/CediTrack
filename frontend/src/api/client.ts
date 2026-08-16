@@ -1,4 +1,9 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const rawBaseUrl = import.meta.env.VITE_API_URL;
+
+// If in production and no VITE_API_URL is configured, use current origin or prompt
+export const API_BASE_URL = rawBaseUrl
+  ? rawBaseUrl.replace(/\/+$/, '')
+  : (import.meta.env.DEV ? 'http://localhost:8000' : '');
 
 export async function apiRequest<T = any>(
   endpoint: string,
@@ -21,29 +26,38 @@ export async function apiRequest<T = any>(
     headers.set('Content-Type', 'application/json');
   }
 
-  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${cleanEndpoint}`;
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
 
-  if (response.status === 204) {
-    return null as any;
+    if (response.status === 204) {
+      return null as any;
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    let data: any = null;
+    if (contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      data = await response.text();
+    }
+
+    if (!response.ok) {
+      const errorMsg = data?.detail || data?.message || response.statusText || `Request failed (${response.status})`;
+      throw new Error(errorMsg);
+    }
+
+    return data;
+  } catch (err: any) {
+    // If backend is unreachable or returning HTML (e.g. 404 rewrite)
+    if (err.message && err.message.includes('Unexpected token')) {
+      throw new Error('Backend API not reachable. Please check VITE_API_URL configuration in Vercel settings.');
+    }
+    throw err;
   }
-
-  const contentType = response.headers.get('content-type') || '';
-  let data: any = null;
-  if (contentType.includes('application/json')) {
-    data = await response.json();
-  } else {
-    data = await response.text();
-  }
-
-  if (!response.ok) {
-    const errorMsg = data?.detail || data?.message || response.statusText || 'An error occurred';
-    throw new Error(errorMsg);
-  }
-
-  return data;
 }

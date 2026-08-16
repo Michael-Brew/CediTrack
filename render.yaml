@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: ceditrack-api
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DATABASE_URL
+        value: postgresql://postgres.wgtwjcfmkuqkltsfvmpr:git.SUPABASE%407@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?sslmode=require
+      - key: SUPABASE_URL
+        value: https://wgtwjcfmkuqkltsfvmpr.supabase.co
+      - key: SUPABASE_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndndHdqY2Zta3Vxa2x0c2Z2bXByIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4MjM1NzUsImV4cCI6MjEwMjM5OTU3NX0.w7IcFHxQ224MEqSq3zX9IqnbIedf1EDXScA1QE_ni2M
+      - key: SUPABASE_JWT_SECRET
+        value: ioTRj/sATO2deuklti1Rqa2akzgcNGxZm1g2YQICTdlRR7efy3vxFV0tb3yCPGXbEx5Ur7XjLt67rLt45Wt5VQ==
+      - key: DEBUG
+        value: "False"

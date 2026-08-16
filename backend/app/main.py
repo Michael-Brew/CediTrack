@@ -1,5 +1,7 @@
+import traceback
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import engine, Base
@@ -13,8 +15,11 @@ from app.routers import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize tables for local sqlite / postgres
-    Base.metadata.create_all(bind=engine)
+    # Initialize tables if needed
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        print("Error during table initialization:", e)
     yield
 
 app = FastAPI(
@@ -23,6 +28,16 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# Exception logging middleware
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    error_trace = traceback.format_exc()
+    print(f"Exception on {request.url.path}: {exc}\n{error_trace}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc), "trace": error_trace}
+    )
 
 # Configure CORS
 app.add_middleware(

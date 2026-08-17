@@ -3,6 +3,7 @@ uvicorn[standard]>=0.28.0
 pydantic>=2.6.0
 pandas>=2.2.0
 openpyxl>=3.1.2
+pypdf>=5.0.0
 sqlalchemy>=2.0.28
 psycopg2-binary>=2.9.9
 pg8000>=1.31.0

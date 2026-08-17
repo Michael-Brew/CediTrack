@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { UploadCloud } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { UploadCloud, FileText } from 'lucide-react';
 import { Account } from '../../api/accounts';
 
 interface FileDropzoneProps {
@@ -14,8 +14,31 @@ export const FileDropzone: React.FC<FileDropzoneProps> = ({
   loading,
 }) => {
   const [dragOver, setDragOver] = useState(false);
-  const [selectedAccount, setSelectedAccount] = useState(accounts[0]?.id || '');
+  
+  // Find "Other" account ID as default, or fallback to first account
+  const getInitialAccountId = () => {
+    const otherAcc = accounts.find(
+      (a) => a.name.trim().toLowerCase() === 'other' || a.type === 'other'
+    );
+    return otherAcc ? otherAcc.id : accounts[0]?.id || '';
+  };
+
+  const [selectedAccount, setSelectedAccount] = useState<string>(getInitialAccountId());
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync default selection if accounts load asynchronously
+  useEffect(() => {
+    if (accounts.length > 0) {
+      const otherAcc = accounts.find(
+        (a) => a.name.trim().toLowerCase() === 'other' || a.type === 'other'
+      );
+      if (otherAcc) {
+        setSelectedAccount(otherAcc.id);
+      } else if (!selectedAccount) {
+        setSelectedAccount(accounts[0].id);
+      }
+    }
+  }, [accounts]);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -34,12 +57,12 @@ export const FileDropzone: React.FC<FileDropzoneProps> = ({
   };
 
   const validateAndProcess = (file: File) => {
-    const validExts = ['.csv', '.xlsx', '.xls'];
+    const validExts = ['.pdf', '.csv', '.xlsx', '.xls'];
     const nameLower = file.name.toLowerCase();
-    const isValid = validExts.some(ext => nameLower.endsWith(ext));
+    const isValid = validExts.some((ext) => nameLower.endsWith(ext));
 
     if (!isValid) {
-      alert('Please select a valid CSV or Excel file (.csv, .xlsx, .xls)');
+      alert('Please select a valid statement file (.pdf, .csv, .xlsx, .xls)');
       return;
     }
     onFileSelected(file, selectedAccount || undefined);
@@ -54,7 +77,7 @@ export const FileDropzone: React.FC<FileDropzoneProps> = ({
             Fallback Default Account
           </label>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            If rows in the file do not match an account name or description, assign to:
+            If transactions in your statement don't specify an account name, assign to:
           </p>
         </div>
         <select
@@ -64,9 +87,15 @@ export const FileDropzone: React.FC<FileDropzoneProps> = ({
         >
           {accounts.map((acc) => (
             <option key={acc.id} value={acc.id} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
-              {acc.name} ({acc.type})
+              {acc.name} {acc.type === 'other' ? '(Default Fallback)' : `(${acc.type})`}
             </option>
           ))}
+          {/* If no Other account in list, provide default Other fallback option */}
+          {!accounts.some((a) => a.name.trim().toLowerCase() === 'other') && (
+            <option value="other" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+              Other (General Account)
+            </option>
+          )}
         </select>
       </div>
 
@@ -85,7 +114,7 @@ export const FileDropzone: React.FC<FileDropzoneProps> = ({
         <input
           ref={fileInputRef}
           type="file"
-          accept=".csv,.xlsx,.xls"
+          accept=".pdf,.csv,.xlsx,.xls"
           onChange={handleChange}
           className="hidden"
         />
@@ -95,19 +124,22 @@ export const FileDropzone: React.FC<FileDropzoneProps> = ({
         </div>
 
         <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mb-1 tracking-tight">
-          {loading ? 'Analyzing statement layout...' : 'Drag and drop your statement file here'}
+          {loading ? 'Reading and parsing statement...' : 'Drag and drop your statement file here'}
         </h3>
         <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mb-4">
-          Supports MTN MoMo, Telecel Cash CSVs, and GCB/Ecobank/Stanbic bank statements (.csv, .xlsx, .xls) up to 10MB.
+          Supports <strong>PDF Statements</strong>, MoMo (MTN, Telecel, AT Money), and all Ghanaian bank statements (.pdf, .csv, .xlsx, .xls) up to 10MB.
         </p>
 
-        <button
-          type="button"
-          disabled={loading}
-          className="px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white text-xs font-semibold border border-slate-200 dark:border-slate-700 shadow-sm transition-all"
-        >
-          {loading ? 'Parsing...' : 'Browse Files on Device'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={loading}
+            className="px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white text-xs font-semibold border border-slate-200 dark:border-slate-700 shadow-sm transition-all flex items-center gap-2"
+          >
+            <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>{loading ? 'Processing...' : 'Browse PDF, CSV, or Excel'}</span>
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -17,13 +17,14 @@ def seed_sample_ghana_data(db: Session, user_id: str) -> Dict[str, Any]:
 
     today = date.today()
 
-    # 2. Create Accounts in batch
+    # 2. Create Accounts in batch including 'Other'
     accounts_data = [
         {"name": "MTN MoMo", "type": "mobile_money", "initial_balance": Decimal("850.00"), "color": "#F59E0B"},
         {"name": "GCB Main Account", "type": "bank", "initial_balance": Decimal("3500.00"), "color": "#0284C7"},
         {"name": "Telecel Cash", "type": "mobile_money", "initial_balance": Decimal("300.00"), "color": "#EF4444"},
         {"name": "Shop Cash Till", "type": "cash", "initial_balance": Decimal("1200.00"), "color": "#10B981"},
         {"name": "Susu Savings Box", "type": "cash", "initial_balance": Decimal("500.00"), "color": "#8B5CF6"},
+        {"name": "Other", "type": "other", "initial_balance": Decimal("0.00"), "color": "#64748B"},
     ]
 
     account_objs = [

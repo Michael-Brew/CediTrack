@@ -18,12 +18,12 @@ async def upload_and_preview_statement(
     db: Session = Depends(get_db),
     user: AuthenticatedUser = Depends(get_current_user)
 ):
-    # Validate file format
-    filename = file.filename or "statement.csv"
-    if not (filename.endswith(".csv") or filename.endswith(".xlsx") or filename.endswith(".xls")):
+    # Validate file format (PDF, CSV, Excel)
+    filename = file.filename or "statement.pdf"
+    if not (filename.lower().endswith((".pdf", ".csv", ".xlsx", ".xls"))):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unsupported file format. Please upload a .csv, .xlsx, or .xls file."
+            detail="Unsupported file format. Please upload a .pdf, .csv, .xlsx, or .xls file."
         )
 
     content = await file.read()
@@ -36,6 +36,23 @@ async def upload_and_preview_statement(
 
     # Fetch user's accounts
     accounts = db.query(Account).filter(Account.user_id == user.id).all()
+    
+    # If user has no accounts at all, create default 'Other' account automatically
+    if not accounts:
+        other_acc = Account(
+            user_id=user.id,
+            name="Other",
+            type="other",
+            initial_balance=0.0,
+            current_balance=0.0,
+            currency="GHS",
+            color="#64748B"
+        )
+        db.add(other_acc)
+        db.commit()
+        db.refresh(other_acc)
+        accounts = [other_acc]
+
     available_accounts = [{"id": acc.id, "name": acc.name, "type": acc.type} for acc in accounts]
 
     # Fetch system and user categories
@@ -79,10 +96,25 @@ def commit_reviewed_transactions(
     account_ids = {acc.id for acc in accounts}
 
     if not account_ids:
-        raise HTTPException(status_code=400, detail="Please create at least one Account before importing transactions.")
+        # Create default 'Other' account
+        other_acc = Account(
+            user_id=user.id,
+            name="Other",
+            type="other",
+            initial_balance=0.0,
+            current_balance=0.0,
+            currency="GHS",
+            color="#64748B"
+        )
+        db.add(other_acc)
+        db.commit()
+        db.refresh(other_acc)
+        accounts = [other_acc]
+        account_ids = {other_acc.id}
 
-    # Fallback account if needed
-    default_acc_id = accounts[0].id
+    # Fallback account preference: 'Other' account if available, else first account
+    other_account = next((a for a in accounts if a.name.lower() == "other" or a.type.lower() == "other"), None)
+    default_acc_id = other_account.id if other_account else accounts[0].id
 
     imported_count = 0
     flagged_anomalies_count = 0
@@ -118,7 +150,7 @@ def commit_reviewed_transactions(
             category=row.category,
             is_flagged_anomaly=is_flagged,
             anomaly_reason=anomaly_reason,
-            source="csv_upload",
+            source="statement_upload",
             reference_id=row.reference_id
         )
         db.add(t)
@@ -145,7 +177,7 @@ def commit_reviewed_transactions(
 @router.get("/templates/{template_type}")
 def download_statement_template(template_type: str):
     """
-    Returns CSV template sample files for testing and reference.
+    Returns sample statement template files.
     """
     if template_type == "momo":
         csv_content = (
@@ -156,7 +188,7 @@ def download_statement_template(template_type: str):
             "15/08/2026,Airtime Purchase 0244123456,20.00,Expense,TXN982344\n"
             "15/08/2026,Received from Brother UK,1200.00,Income,TXN982345\n"
         )
-        filename = "mtn_momo_statement_template.csv"
+        filename = "momo_statement_template.csv"
     elif template_type == "bank":
         csv_content = (
             "Date,Narration,Debit,Credit,Balance\n"

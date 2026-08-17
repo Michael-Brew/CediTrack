@@ -4,6 +4,7 @@ from datetime import datetime, date
 from decimal import Decimal, InvalidOperation
 from typing import List, Dict, Any, Tuple, Optional
 import pandas as pd
+import pypdf
 
 from app.schemas import CSVPreviewRow, CSVPreviewResponse
 from app.services.categorizer import categorize, resolve_account_from_text
@@ -60,6 +61,7 @@ def parse_date_flexible(val: Any) -> Optional[date]:
         "%Y-%m-%d", "%Y/%m/%d",
         "%m/%d/%Y", "%m-%d-%Y",
         "%d/%m/%y", "%d-%m-%y",
+        "%d %b %Y", "%d-%b-%Y", "%d %B %Y",
         "%Y%m%d",
     ]
 
@@ -129,6 +131,93 @@ def detect_columns(df: pd.DataFrame) -> Dict[str, Optional[str]]:
 
     return mapping
 
+def extract_transactions_from_pdf(content: bytes) -> pd.DataFrame:
+    """
+    Extracts structured transactions from bank and mobile money PDF statements.
+    Supports GCB, Ecobank, Stanbic, Absa, Fidelity, CalBank, MTN MoMo, Telecel Cash, AT Money statements.
+    """
+    reader = pypdf.PdfReader(io.BytesIO(content))
+    all_text = ""
+    for page in reader.pages:
+        txt = page.extract_text()
+        if txt:
+            all_text += "\n" + txt
+
+    if not all_text.strip():
+        raise ValueError("Could not extract readable text from this PDF statement. Please ensure it is not an image-only scan.")
+
+    DATE_REGEX = re.compile(
+        r'\b(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4}|\d{4}[/\-\.]\d{1,2}[/\-\.]\d{1,2}|\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{2,4})\b',
+        re.IGNORECASE
+    )
+    AMOUNT_REGEX = re.compile(r'\(?\b\d{1,3}(?:,\d{3})*(?:\.\d{1,2})\b\)?')
+    REF_REGEX = re.compile(r'\b(?:TXN|REF|RECEIPT|ID)[\s:#-]*([A-Z0-9]{5,24})\b', re.IGNORECASE)
+
+    rows = []
+    current_row = None
+
+    lines = all_text.split('\n')
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line:
+            continue
+
+        line_lower = line.lower()
+        # Skip headers, footers, summary metrics
+        if any(h in line_lower for h in [
+            'statement of account', 'page ', 'opening balance', 'closing balance',
+            'total debit', 'total credit', 'account summary', 'account number:', 'balance b/f', 'balance c/f'
+        ]):
+            continue
+
+        date_match = DATE_REGEX.search(line)
+        if date_match:
+            if current_row:
+                rows.append(current_row)
+
+            d_str = date_match.group(1)
+            remainder = line[date_match.end():].strip()
+
+            amounts = AMOUNT_REGEX.findall(remainder)
+            ref_match = REF_REGEX.search(remainder)
+            ref_id = ref_match.group(1) if ref_match else None
+
+            first_amt_match = AMOUNT_REGEX.search(remainder)
+            if first_amt_match:
+                desc = remainder[:first_amt_match.start()].strip()
+                raw_amt = first_amt_match.group(0)
+            else:
+                desc = remainder
+                raw_amt = None
+
+            line_upper = line.upper()
+            is_income = False
+            if ' CR' in line_upper or 'CREDIT' in line_upper or any(w in desc.lower() for w in ['salary', 'cash in', 'received', 'deposit', 'refund', 'reversal', 'interest']):
+                is_income = True
+            elif ' DR' in line_upper or 'DEBIT' in line_upper or (raw_amt and raw_amt.startswith('(')) or any(w in desc.lower() for w in ['payment', 'cash out', 'transfer to', 'withdrawal', 'fee', 'charge', 'e-levy', 'airtime', 'token', 'bill']):
+                is_income = False
+            else:
+                is_income = False
+
+            current_row = {
+                'date': d_str,
+                'description': desc or 'Transaction',
+                'amount': raw_amt,
+                'type': 'Income' if is_income else 'Expense',
+                'reference': ref_id
+            }
+        elif current_row and not AMOUNT_REGEX.search(line):
+            # Append multi-line narration
+            current_row['description'] += ' ' + line
+
+    if current_row:
+        rows.append(current_row)
+
+    if not rows:
+        raise ValueError("No transaction rows could be recognized in this PDF. Please check if the statement contains tabular date and amount entries.")
+
+    return pd.DataFrame(rows)
+
 def parse_statement_file(
     content: bytes,
     filename: str,
@@ -137,19 +226,25 @@ def parse_statement_file(
     default_account_id: Optional[str] = None
 ) -> CSVPreviewResponse:
     """
-    Parses a CSV or Excel file and returns a structured preview response.
+    Parses a PDF, CSV, or Excel statement file and returns a structured preview response.
     """
-    # 1. Load DataFrame
-    is_excel = filename.endswith((".xlsx", ".xls"))
+    filename_lower = filename.lower()
+    is_pdf = filename_lower.endswith(".pdf")
+    is_excel = filename_lower.endswith((".xlsx", ".xls"))
+
     try:
-        if is_excel:
+        if is_pdf:
+            df = extract_transactions_from_pdf(content)
+            detected_format = "PDF Statement (MoMo / Bank)"
+        elif is_excel:
             df = pd.read_excel(io.BytesIO(content))
+            detected_format = "Excel Spreadsheet"
         else:
-            # Try utf-8 first, fallback to latin-1
             try:
                 df = pd.read_csv(io.BytesIO(content), encoding="utf-8")
             except UnicodeDecodeError:
                 df = pd.read_csv(io.BytesIO(content), encoding="latin-1")
+            detected_format = "CSV Statement"
     except Exception as e:
         raise ValueError(f"Could not parse file '{filename}': {str(e)}")
 
@@ -160,28 +255,31 @@ def parse_statement_file(
     df = df.dropna(how="all").reset_index(drop=True)
 
     col_map = detect_columns(df)
-    detected_format = "Unknown"
 
     has_debit_credit = bool(col_map["debit"] and col_map["credit"])
     has_single_amount = bool(col_map["amount"])
 
-    if has_debit_credit:
-        detected_format = "Debit / Credit Columns"
-    elif has_single_amount:
-        detected_format = "Single Amount Column"
-    else:
-        # If no explicit amount column was detected, search first numeric column
-        for c in df.columns:
-            if c != col_map["date"] and c != col_map["description"]:
-                col_map["amount"] = c
-                detected_format = "Inferred Amount Column"
-                break
+    if not is_pdf:
+        if has_debit_credit:
+            detected_format = "Debit / Credit Columns"
+        elif has_single_amount:
+            detected_format = "Single Amount Column"
+        else:
+            for c in df.columns:
+                if c != col_map["date"] and c != col_map["description"]:
+                    col_map["amount"] = c
+                    detected_format = "Inferred Amount Column"
+                    break
 
     rows: List[CSVPreviewRow] = []
     valid_count = 0
     invalid_count = 0
 
     account_map = {acc["id"]: acc["name"] for acc in available_accounts}
+
+    # Find "Other" account ID if present among available accounts to use as smart fallback
+    other_account = next((a for a in available_accounts if a.get("name", "").lower() == "other" or a.get("type", "").lower() == "other"), None)
+    fallback_acc_id = default_account_id or (other_account["id"] if other_account else (available_accounts[0]["id"] if available_accounts else None))
 
     for idx, raw_row in df.iterrows():
         row_dict = raw_row.to_dict()
@@ -193,7 +291,6 @@ def parse_statement_file(
         if col_map["date"] and col_map["date"] in row_dict:
             parsed_d = parse_date_flexible(row_dict[col_map["date"]])
         if not parsed_d:
-            # Try to search any column with a date-like value
             for c, val in row_dict.items():
                 parsed_d = parse_date_flexible(val)
                 if parsed_d:
@@ -209,7 +306,6 @@ def parse_statement_file(
         if col_map["description"] and col_map["description"] in row_dict:
             desc = str(row_dict[col_map["description"]] or "").strip()
         if not desc or desc == "nan":
-            # Find non-date, non-amount text
             for c, val in row_dict.items():
                 if c not in [col_map["date"], col_map["amount"], col_map["debit"], col_map["credit"]]:
                     if pd.notna(val) and len(str(val).strip()) > 1:
@@ -245,7 +341,6 @@ def parse_statement_file(
 
             if parsed_amt is not None and parsed_amt > 0:
                 amount = parsed_amt
-                # Check type column if present
                 if col_map["type"] and col_map["type"] in row_dict:
                     type_str = str(row_dict[col_map["type"]]).lower()
                     if any(w in type_str for w in ["cr", "credit", "in", "deposit", "income", "received"]):
@@ -257,7 +352,7 @@ def parse_statement_file(
                 else:
                     if sign == "negative":
                         txn_type = "Expense"
-                    elif any(w in desc.lower() for w in ["received from", "deposit", "salary", "refund", "cashin"]):
+                    elif any(w in desc.lower() for w in ["received from", "deposit", "salary", "refund", "cash in"]):
                         txn_type = "Income"
                     else:
                         txn_type = "Expense"
@@ -279,8 +374,15 @@ def parse_statement_file(
             available_accounts
         )
 
-        final_acc_id = res_acc_id or default_account_id or (available_accounts[0]["id"] if available_accounts else None)
-        final_acc_name = account_map.get(final_acc_id, res_acc_name or "Unassigned Account")
+        final_acc_id = res_acc_id or fallback_acc_id
+        final_acc_name = account_map.get(final_acc_id, res_acc_name or "Other")
+
+        # Extract reference if present
+        ref_val = None
+        if col_map["reference"] and col_map["reference"] in row_dict:
+            ref_raw = str(row_dict[col_map["reference"]] or "").strip()
+            if ref_raw and ref_raw != "nan":
+                ref_val = ref_raw
 
         if is_valid:
             valid_count += 1

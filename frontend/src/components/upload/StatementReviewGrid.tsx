@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   CheckCircle2, 
   AlertCircle, 
@@ -34,8 +34,22 @@ export const StatementReviewGrid: React.FC<StatementReviewGridProps> = ({
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(
     new Set(preview.rows.map((_, i) => i))
   );
-  const [bulkAccount, setBulkAccount] = useState<string>(accounts[0]?.id || '');
+
+  const getInitialBulkAccountId = () => {
+    const otherAcc = accounts.find(
+      (a) => a.name.trim().toLowerCase() === 'other' || a.type === 'other'
+    );
+    return otherAcc ? otherAcc.id : accounts[0]?.id || '';
+  };
+
+  const [bulkAccount, setBulkAccount] = useState<string>(getInitialBulkAccountId());
   const [bulkCategory, setBulkCategory] = useState<string>('Food');
+
+  useEffect(() => {
+    if (accounts.length > 0 && !bulkAccount) {
+      setBulkAccount(getInitialBulkAccountId());
+    }
+  }, [accounts]);
 
   const updateRow = (index: number, field: keyof CSVPreviewRow, value: any) => {
     setRows((prev) => {
@@ -89,13 +103,18 @@ export const StatementReviewGrid: React.FC<StatementReviewGridProps> = ({
       return;
     }
 
+    const otherAcc = accounts.find(
+      (a) => a.name.trim().toLowerCase() === 'other' || a.type === 'other'
+    );
+    const fallbackAccId = otherAcc?.id || accounts[0]?.id || '';
+
     const payloadRows: CSVCommitRow[] = validSelectedRows.map((r) => ({
       date: r.date,
       description: r.description,
       amount: Number(r.amount),
       type: r.type,
       category: r.category,
-      account_id: r.account_id || accounts[0]?.id || '',
+      account_id: r.account_id || fallbackAccId,
     }));
 
     await onCommit(preview.filename, payloadRows);
@@ -130,7 +149,7 @@ export const StatementReviewGrid: React.FC<StatementReviewGridProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={onCancel}
-              className="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-slate-700 transition-colors"
+              className="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-slate-700 transition-colors"
             >
               Cancel
             </button>
